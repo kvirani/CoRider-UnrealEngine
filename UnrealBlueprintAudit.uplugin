@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Unreal Blueprint Audit",
+	"Description": "Exports Blueprint asset summaries to JSON for external analysis, diffing, and LLM integration.",
+	"Category": "Editor",
+	"CreatedBy": "",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "UnrealBlueprintAudit",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

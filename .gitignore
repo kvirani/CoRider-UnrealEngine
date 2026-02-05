@@ -1,0 +1,30 @@
+# Unreal Engine Plugin - Build Artifacts
+Binaries/
+Intermediate/
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# JetBrains IDEs
+.idea/
+*.iml
+
+# Derived Data Cache (if somehow present)
+DerivedDataCache/
+
+# Saved folder (logs, configs, etc.)
+Saved/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log
