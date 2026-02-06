@@ -7,7 +7,7 @@ class UBlueprint;
 class UEdGraph;
 struct FEdGraphPinType;
 
-DECLARE_LOG_CATEGORY_EXTERN(LogBlueprintAudit, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogCoRider, Log, All);
 
 /**
  * Shared utility for auditing Blueprint assets.
@@ -15,6 +15,9 @@ DECLARE_LOG_CATEGORY_EXTERN(LogBlueprintAudit, Log, All);
  */
 struct CORIDERUNREALENGINE_API FBlueprintAuditor
 {
+	/** Bump when the JSON schema changes to invalidate all cached audit files. */
+	static constexpr int32 AuditSchemaVersion = 1;
+
 	/** Produce a JSON object summarizing the given Blueprint. */
 	static TSharedPtr<FJsonObject> AuditBlueprint(const UBlueprint* BP);
 

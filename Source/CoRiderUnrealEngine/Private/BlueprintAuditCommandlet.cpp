@@ -19,8 +19,6 @@ UBlueprintAuditCommandlet::UBlueprintAuditCommandlet()
 
 int32 UBlueprintAuditCommandlet::Main(const FString& Params)
 {
-	UE_LOG(LogBlueprintAudit, Display, TEXT("=== Blueprint Audit ==="));
-
 	// Parse parameters
 	FString AssetPath;
 	FParse::Value(*Params, TEXT("-AssetPath="), AssetPath);
@@ -47,7 +45,7 @@ int32 UBlueprintAuditCommandlet::Main(const FString& Params)
 
 		if (!BP)
 		{
-			UE_LOG(LogBlueprintAudit, Error, TEXT("Could not load blueprint: %s"), *AssetPath);
+			UE_LOG(LogCoRider, Error, TEXT("CoRider: Blueprint not found — %s"), *AssetPath);
 			return 1;
 		}
 
@@ -56,15 +54,17 @@ int32 UBlueprintAuditCommandlet::Main(const FString& Params)
 			OutputPath = FPaths::ProjectDir() / TEXT("BlueprintAudit.json");
 		}
 
-		UE_LOG(LogBlueprintAudit, Display, TEXT("Auditing 1 blueprint..."));
+		UE_LOG(LogCoRider, Display, TEXT("CoRider: Auditing 1 Blueprint..."));
 
+		const double StartTime = FPlatformTime::Seconds();
 		TSharedPtr<FJsonObject> AuditJson = FBlueprintAuditor::AuditBlueprint(BP);
 		if (!FBlueprintAuditor::WriteAuditJson(AuditJson, OutputPath))
 		{
 			return 1;
 		}
+		const double Elapsed = FPlatformTime::Seconds() - StartTime;
 
-		UE_LOG(LogBlueprintAudit, Display, TEXT("=== Blueprint Audit Complete ==="));
+		UE_LOG(LogCoRider, Display, TEXT("CoRider: Audit complete — wrote %s in %.2fs"), *OutputPath, Elapsed);
 		return 0;
 	}
 
@@ -72,20 +72,27 @@ int32 UBlueprintAuditCommandlet::Main(const FString& Params)
 	TArray<FAssetData> AllBlueprints;
 	AssetRegistry.GetAssetsByClass(UBlueprint::StaticClass()->GetClassPathName(), AllBlueprints, true);
 
-	UE_LOG(LogBlueprintAudit, Display, TEXT("Auditing %d blueprint(s)..."), AllBlueprints.Num());
+	UE_LOG(LogCoRider, Display, TEXT("CoRider: Auditing %d Blueprint(s)..."), AllBlueprints.Num());
 
+	const double StartTime = FPlatformTime::Seconds();
 	int32 SuccessCount = 0;
+	int32 SkipCount = 0;
+	int32 FailCount = 0;
+
 	for (const FAssetData& Asset : AllBlueprints)
 	{
 		// Filter: Only audit project content (starts with /Game/)
 		if (!Asset.PackageName.ToString().StartsWith(TEXT("/Game/")))
 		{
+			++SkipCount;
 			continue;
 		}
 
 		UBlueprint* BP = Cast<UBlueprint>(Asset.GetAsset());
 		if (!BP)
 		{
+			++FailCount;
+			UE_LOG(LogCoRider, Warning, TEXT("CoRider: Failed to load asset %s"), *Asset.PackageName.ToString());
 			continue;
 		}
 
@@ -95,9 +102,15 @@ int32 UBlueprintAuditCommandlet::Main(const FString& Params)
 		{
 			++SuccessCount;
 		}
+		else
+		{
+			++FailCount;
+			UE_LOG(LogCoRider, Warning, TEXT("CoRider: Failed to write audit for %s"), *BP->GetName());
+		}
 	}
 
-	UE_LOG(LogBlueprintAudit, Display, TEXT("Wrote %d audit file(s)."), SuccessCount);
-	UE_LOG(LogBlueprintAudit, Display, TEXT("=== Blueprint Audit Complete ==="));
+	const double Elapsed = FPlatformTime::Seconds() - StartTime;
+	UE_LOG(LogCoRider, Display, TEXT("CoRider: Audit complete — %d written, %d skipped, %d failed in %.2fs"),
+		SuccessCount, SkipCount, FailCount, Elapsed);
 	return 0;
 }

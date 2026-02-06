@@ -24,7 +24,7 @@
 #include "Components/Widget.h"
 #include "Components/PanelWidget.h"
 
-DEFINE_LOG_CATEGORY(LogBlueprintAudit);
+DEFINE_LOG_CATEGORY(LogCoRider);
 
 TSharedPtr<FJsonObject> FBlueprintAuditor::AuditBlueprint(const UBlueprint* BP)
 {
@@ -45,7 +45,7 @@ TSharedPtr<FJsonObject> FBlueprintAuditor::AuditBlueprint(const UBlueprint* BP)
 		Result->SetStringField(TEXT("SourceFileHash"), ComputeFileHash(SourcePath));
 	}
 
-	UE_LOG(LogBlueprintAudit, Display, TEXT("  %s  (Parent: %s)"),
+	UE_LOG(LogCoRider, Verbose, TEXT("CoRider: Auditing %s (Parent: %s)"),
 		*BP->GetName(), BP->ParentClass ? *BP->ParentClass->GetName() : TEXT("None"));
 
 	// --- Variables ---
@@ -323,8 +323,9 @@ FString FBlueprintAuditor::GetAuditOutputPath(const FString& PackageName)
 		RelativePath.RightChopInline(GamePrefix.Len());
 	}
 
-	// Build: <ProjectDir>/Saved/Audit/Blueprints/<relative_path>.json
-	return FPaths::ProjectDir() / TEXT("Saved") / TEXT("Audit") / TEXT("Blueprints") / RelativePath + TEXT(".json");
+	// Build: <ProjectDir>/Saved/Audit/v<N>/Blueprints/<relative_path>.json
+	const FString VersionDir = FString::Printf(TEXT("v%d"), AuditSchemaVersion);
+	return FPaths::ProjectDir() / TEXT("Saved") / TEXT("Audit") / VersionDir / TEXT("Blueprints") / RelativePath + TEXT(".json");
 }
 
 FString FBlueprintAuditor::GetSourceFilePath(const FString& PackageName)
@@ -334,6 +335,7 @@ FString FBlueprintAuditor::GetSourceFilePath(const FString& PackageName)
 	{
 		return FPaths::ConvertRelativePathToFull(FilePath);
 	}
+	UE_LOG(LogCoRider, Warning, TEXT("CoRider: Failed to resolve source path for %s"), *PackageName);
 	return FString();
 }
 
@@ -344,6 +346,7 @@ FString FBlueprintAuditor::ComputeFileHash(const FString& FilePath)
 	{
 		return LexToString(Hash);
 	}
+	UE_LOG(LogCoRider, Warning, TEXT("CoRider: Failed to compute hash for %s"), *FilePath);
 	return FString();
 }
 
@@ -355,11 +358,11 @@ bool FBlueprintAuditor::WriteAuditJson(const TSharedPtr<FJsonObject>& JsonObject
 
 	if (FFileHelper::SaveStringToFile(OutputString, *OutputPath))
 	{
-		UE_LOG(LogBlueprintAudit, Display, TEXT("Audit saved to: %s"), *OutputPath);
+		UE_LOG(LogCoRider, Verbose, TEXT("CoRider: Audit saved to %s"), *OutputPath);
 		return true;
 	}
 
-	UE_LOG(LogBlueprintAudit, Error, TEXT("Failed to write: %s"), *OutputPath);
+	UE_LOG(LogCoRider, Error, TEXT("CoRider: Failed to write %s"), *OutputPath);
 	return false;
 }
 

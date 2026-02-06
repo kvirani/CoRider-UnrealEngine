@@ -19,7 +19,7 @@ void UBlueprintAuditSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	StaleCheckTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
 		FTickerDelegate::CreateUObject(this, &UBlueprintAuditSubsystem::OnStaleCheckTick));
 
-	UE_LOG(LogBlueprintAudit, Display, TEXT("BlueprintAuditSubsystem initialized — watching for Blueprint saves."));
+	UE_LOG(LogCoRider, Display, TEXT("CoRider: Subsystem initialized — watching for Blueprint saves."));
 }
 
 void UBlueprintAuditSubsystem::Deinitialize()
@@ -32,7 +32,7 @@ void UBlueprintAuditSubsystem::Deinitialize()
 
 	UPackage::PackageSavedWithContextEvent.RemoveAll(this);
 
-	UE_LOG(LogBlueprintAudit, Display, TEXT("BlueprintAuditSubsystem deinitialized."));
+	UE_LOG(LogCoRider, Log, TEXT("CoRider: Subsystem deinitialized."));
 
 	Super::Deinitialize();
 }
@@ -61,6 +61,7 @@ void UBlueprintAuditSubsystem::OnPackageSaved(const FString& PackageFileName, UP
 	{
 		if (const UBlueprint* BP = Cast<UBlueprint>(Object))
 		{
+			UE_LOG(LogCoRider, Verbose, TEXT("CoRider: Auditing saved Blueprint %s"), *BP->GetName());
 			const FString OutputPath = FBlueprintAuditor::GetAuditOutputPath(BP);
 			const TSharedPtr<FJsonObject> AuditJson = FBlueprintAuditor::AuditBlueprint(BP);
 			FBlueprintAuditor::WriteAuditJson(AuditJson, OutputPath);
@@ -74,7 +75,7 @@ bool UBlueprintAuditSubsystem::OnStaleCheckTick(float DeltaTime)
 	IAssetRegistry& AssetRegistry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry").Get();
 	if (AssetRegistry.IsLoadingAssets())
 	{
-		// Asset registry still scanning — keep ticking until it's ready
+		UE_LOG(LogCoRider, Verbose, TEXT("CoRider: Asset registry still loading, deferring stale check..."));
 		return true;
 	}
 
@@ -92,7 +93,11 @@ void UBlueprintAuditSubsystem::AuditStaleBlueprints()
 	TArray<FAssetData> AllBlueprints;
 	AssetRegistry.GetAssetsByClass(UBlueprint::StaticClass()->GetClassPathName(), AllBlueprints, true);
 
-	int32 AuditedCount = 0;
+	const double StartTime = FPlatformTime::Seconds();
+	int32 TotalScanned = 0;
+	int32 UpToDateCount = 0;
+	int32 ReAuditedCount = 0;
+	int32 FailedCount = 0;
 
 	for (const FAssetData& Asset : AllBlueprints)
 	{
@@ -104,11 +109,14 @@ void UBlueprintAuditSubsystem::AuditStaleBlueprints()
 			continue;
 		}
 
+		++TotalScanned;
+
 		const FString JsonPath = FBlueprintAuditor::GetAuditOutputPath(PackageName);
 		const FString SourcePath = FBlueprintAuditor::GetSourceFilePath(PackageName);
 
 		if (SourcePath.IsEmpty())
 		{
+			++FailedCount;
 			continue;
 		}
 
@@ -116,6 +124,7 @@ void UBlueprintAuditSubsystem::AuditStaleBlueprints()
 		const FString CurrentHash = FBlueprintAuditor::ComputeFileHash(SourcePath);
 		if (CurrentHash.IsEmpty())
 		{
+			++FailedCount;
 			continue;
 		}
 
@@ -130,11 +139,17 @@ void UBlueprintAuditSubsystem::AuditStaleBlueprints()
 			{
 				StoredHash = ExistingJson->GetStringField(TEXT("SourceFileHash"));
 			}
+			else
+			{
+				UE_LOG(LogCoRider, Warning, TEXT("CoRider: Failed to parse existing audit JSON for %s"), *PackageName);
+			}
 		}
 
 		// Skip if hash matches — this Blueprint is up to date
 		if (CurrentHash == StoredHash)
 		{
+			UE_LOG(LogCoRider, Verbose, TEXT("CoRider: %s is up-to-date, skipping"), *PackageName);
+			++UpToDateCount;
 			continue;
 		}
 
@@ -142,14 +157,17 @@ void UBlueprintAuditSubsystem::AuditStaleBlueprints()
 		UBlueprint* BP = Cast<UBlueprint>(Asset.GetAsset());
 		if (!BP)
 		{
+			++FailedCount;
+			UE_LOG(LogCoRider, Warning, TEXT("CoRider: Failed to load asset %s for re-audit"), *PackageName);
 			continue;
 		}
 
 		const TSharedPtr<FJsonObject> AuditJson = FBlueprintAuditor::AuditBlueprint(BP);
 		FBlueprintAuditor::WriteAuditJson(AuditJson, JsonPath);
-		++AuditedCount;
+		++ReAuditedCount;
 	}
 
-	UE_LOG(LogBlueprintAudit, Display, TEXT("Stale check complete — re-audited %d / %d Blueprint(s)."),
-		AuditedCount, AllBlueprints.Num());
+	const double Elapsed = FPlatformTime::Seconds() - StartTime;
+	UE_LOG(LogCoRider, Display, TEXT("CoRider: Stale check complete — %d scanned, %d up-to-date, %d re-audited, %d failed in %.2fs"),
+		TotalScanned, UpToDateCount, ReAuditedCount, FailedCount, Elapsed);
 }

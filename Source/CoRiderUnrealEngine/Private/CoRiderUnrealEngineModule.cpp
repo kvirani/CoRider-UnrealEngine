@@ -1,15 +1,16 @@
 #include "CoRiderUnrealEngineModule.h"
+#include "BlueprintAuditor.h"
 
 #define LOCTEXT_NAMESPACE "FCoRiderUnrealEngineModule"
 
 void FCoRiderUnrealEngineModule::StartupModule()
 {
-	// Module startup — subsystem auto-registers via UCLASS
+	UE_LOG(LogCoRider, Log, TEXT("CoRider: CoRiderUnrealEngine module loaded."));
 }
 
 void FCoRiderUnrealEngineModule::ShutdownModule()
 {
-	// Module shutdown
+	UE_LOG(LogCoRider, Log, TEXT("CoRider: CoRiderUnrealEngine module unloaded."));
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -43,8 +43,12 @@ UnrealEditor-Cmd.exe "path/to/Project.uproject" -run=BlueprintAudit -AssetPath=/
 
 ### Output Location
 
-- **All Blueprints**: `<ProjectDir>/Saved/Audit/Blueprints/<relative_path>.json`
+- **All Blueprints**: `<ProjectDir>/Saved/Audit/v<N>/Blueprints/<relative_path>.json`
 - **Single Blueprint**: Specified via `-Output` or defaults to `<ProjectDir>/BlueprintAudit.json`
+
+The `v<N>` segment is the audit schema version (`FBlueprintAuditor::AuditSchemaVersion`). When the version is bumped, all cached JSON is automatically invalidated because no files exist at the new path.
+
+> **TODO:** Add automatic cleanup of old `Saved/Audit/v<old>/` directories on startup.
 
 ### On-Save (Automatic)
 
