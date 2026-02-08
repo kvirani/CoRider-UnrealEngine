@@ -84,6 +84,19 @@ When the editor is running, the `UBlueprintAuditSubsystem` automatically re-audi
     {"Name": "RootComponent", "Class": "SceneComponent"}
   ],
 
+  "Timelines": [
+    {
+      "Name": "FadeTimeline",
+      "Length": 2.0,
+      "Looping": false,
+      "AutoPlay": false,
+      "FloatTrackCount": 1,
+      "VectorTrackCount": 0,
+      "LinearColorTrackCount": 0,
+      "EventTrackCount": 0
+    }
+  ],
+
   "WidgetTree": {
     "Name": "CanvasPanel_0",
     "Class": "CanvasPanel",
@@ -97,7 +110,14 @@ When the editor is running, the `UBlueprintAuditSubsystem` automatically re-audi
       "TotalNodes": 42,
       "Events": ["Event BeginPlay", "CustomEvent: OnMenuOpened"],
       "FunctionCalls": [
-        {"Function": "PlayAnimation", "Target": "UserWidget"}
+        {
+          "Function": "PlayAnimation",
+          "Target": "UserWidget",
+          "IsNative": true,
+          "DefaultInputs": [
+            {"Name": "PlaybackSpeed", "Value": "1.5"}
+          ]
+        }
       ],
       "VariablesRead": ["PlayerName"],
       "VariablesWritten": ["bIsActive"],

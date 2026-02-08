@@ -146,6 +146,9 @@ void UBlueprintAuditSubsystem::AuditStaleBlueprints()
 	int32 ReAuditedCount = 0;
 	int32 FailedCount = 0;
 
+	int32 AssetsSinceGC = 0;
+	constexpr int32 GCInterval = 50;
+
 	for (const FAssetData& Asset : AllBlueprints)
 	{
 		const FString PackageName = Asset.PackageName.ToString();
@@ -212,6 +215,12 @@ void UBlueprintAuditSubsystem::AuditStaleBlueprints()
 		const TSharedPtr<FJsonObject> AuditJson = FBlueprintAuditor::AuditBlueprint(BP);
 		FBlueprintAuditor::WriteAuditJson(AuditJson, JsonPath);
 		++ReAuditedCount;
+
+		if (++AssetsSinceGC >= GCInterval)
+		{
+			CollectGarbage(RF_NoFlags);
+			AssetsSinceGC = 0;
+		}
 	}
 
 	const double Elapsed = FPlatformTime::Seconds() - StartTime;

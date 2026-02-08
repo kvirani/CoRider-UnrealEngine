@@ -89,7 +89,6 @@ void FAssetRefHttpServer::Stop()
 
 	if (BoundPort != 0)
 	{
-		FHttpServerModule::Get().StopAllListeners();
 		DeleteMarkerFile();
 		UE_LOG(LogCoRider, Display, TEXT("CoRider: Asset ref HTTP server stopped (was on port %d)"), BoundPort);
 		BoundPort = 0;
@@ -237,6 +236,26 @@ bool FAssetRefHttpServer::HandleAssetQuery(const FHttpServerRequest& Request, co
 	}
 
 	IAssetRegistry& Registry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry").Get();
+
+	// Check if this package actually exists in the registry
+	TArray<FAssetData> AssetDataList;
+	Registry.GetAssetsByPackageName(FName(*AssetPath), AssetDataList, true);
+	if (AssetDataList.IsEmpty())
+	{
+		TSharedRef<FJsonObject> ErrorJson = MakeShared<FJsonObject>();
+		ErrorJson->SetStringField(TEXT("error"), TEXT("Asset not found in registry"));
+		ErrorJson->SetStringField(TEXT("asset"), AssetPath);
+		ErrorJson->SetStringField(TEXT("hint"), TEXT("Check that the package path is correct and the asset is loaded"));
+
+		FString Body;
+		TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&Body);
+		FJsonSerializer::Serialize(ErrorJson, Writer);
+
+		auto Response = FHttpServerResponse::Create(Body, TEXT("application/json"));
+		Response->Code = EHttpServerResponseCodes::NotFound;
+		OnComplete(MoveTemp(Response));
+		return true;
+	}
 
 	TArray<FAssetDependency> Results;
 	if (bGetDependencies)

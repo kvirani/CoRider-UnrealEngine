@@ -6,6 +6,7 @@
 #include "Engine/Blueprint.h"
 #include "Engine/SCS_Node.h"
 #include "Engine/SimpleConstructionScript.h"
+#include "Engine/TimelineTemplate.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_CustomEvent.h"
 #include "K2Node_Event.h"
@@ -147,6 +148,25 @@ TSharedPtr<FJsonObject> FBlueprintAuditor::AuditBlueprint(const UBlueprint* BP)
 	}
 	Result->SetArrayField(TEXT("Components"), ComponentsArray);
 
+	// --- Timelines ---
+	TArray<TSharedPtr<FJsonValue>> TimelinesArray;
+	for (const UTimelineTemplate* Timeline : BP->Timelines)
+	{
+		if (!Timeline) continue;
+
+		TSharedPtr<FJsonObject> TLObj = MakeShareable(new FJsonObject());
+		TLObj->SetStringField(TEXT("Name"), Timeline->GetName());
+		TLObj->SetNumberField(TEXT("Length"), Timeline->TimelineLength);
+		TLObj->SetBoolField(TEXT("Looping"), Timeline->bLoop);
+		TLObj->SetBoolField(TEXT("AutoPlay"), Timeline->bAutoPlay);
+		TLObj->SetNumberField(TEXT("FloatTrackCount"), Timeline->FloatTracks.Num());
+		TLObj->SetNumberField(TEXT("VectorTrackCount"), Timeline->VectorTracks.Num());
+		TLObj->SetNumberField(TEXT("LinearColorTrackCount"), Timeline->LinearColorTracks.Num());
+		TLObj->SetNumberField(TEXT("EventTrackCount"), Timeline->EventTracks.Num());
+		TimelinesArray.Add(MakeShareable(new FJsonValueObject(TLObj)));
+	}
+	Result->SetArrayField(TEXT("Timelines"), TimelinesArray);
+
 	// --- Widget Tree (Widget Blueprints) ---
 	if (const UWidgetBlueprint* WidgetBP = Cast<UWidgetBlueprint>(BP))
 	{
@@ -217,7 +237,8 @@ TSharedPtr<FJsonObject> FBlueprintAuditor::AuditGraph(const UEdGraph* Graph)
 			const FString FuncName = CallNode->FunctionReference.GetMemberName().ToString();
 
 			FString TargetClass = TEXT("Self");
-			if (const UFunction* Func = CallNode->GetTargetFunction())
+			const UFunction* Func = CallNode->GetTargetFunction();
+			if (Func)
 			{
 				if (const UClass* OwnerClass = Func->GetOwnerClass())
 				{
@@ -227,6 +248,28 @@ TSharedPtr<FJsonObject> FBlueprintAuditor::AuditGraph(const UEdGraph* Graph)
 
 			CallObj->SetStringField(TEXT("Function"), FuncName);
 			CallObj->SetStringField(TEXT("Target"), TargetClass);
+			CallObj->SetBoolField(TEXT("IsNative"), Func && Func->IsNative());
+
+			// Capture hardcoded (literal) input pin values
+			TArray<TSharedPtr<FJsonValue>> DefaultInputs;
+			for (const UEdGraphPin* Pin : CallNode->Pins)
+			{
+				if (Pin->Direction != EGPD_Input) continue;
+				if (Pin->LinkedTo.Num() > 0) continue;
+				if (Pin->DefaultValue.IsEmpty()) continue;
+				if (Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Exec) continue;
+				if (Pin->PinName == UEdGraphSchema_K2::PN_Self) continue;
+
+				TSharedPtr<FJsonObject> PinObj = MakeShareable(new FJsonObject());
+				PinObj->SetStringField(TEXT("Name"), Pin->PinName.ToString());
+				PinObj->SetStringField(TEXT("Value"), Pin->DefaultValue);
+				DefaultInputs.Add(MakeShareable(new FJsonValueObject(PinObj)));
+			}
+			if (DefaultInputs.Num() > 0)
+			{
+				CallObj->SetArrayField(TEXT("DefaultInputs"), DefaultInputs);
+			}
+
 			FunctionCalls.Add(MakeShareable(new FJsonValueObject(CallObj)));
 		}
 		else if (const UK2Node_VariableGet* GetNode = Cast<UK2Node_VariableGet>(Node))

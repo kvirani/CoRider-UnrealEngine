@@ -16,7 +16,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogCoRider, Log, All);
 struct CORIDERUNREALENGINE_API FBlueprintAuditor
 {
 	/** Bump when the JSON schema changes to invalidate all cached audit files. */
-	static constexpr int32 AuditSchemaVersion = 1;
+	static constexpr int32 AuditSchemaVersion = 2;
 
 	/** Produce a JSON object summarizing the given Blueprint. */
 	static TSharedPtr<FJsonObject> AuditBlueprint(const UBlueprint* BP);

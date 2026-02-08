@@ -79,6 +79,9 @@ int32 UBlueprintAuditCommandlet::Main(const FString& Params)
 	int32 SkipCount = 0;
 	int32 FailCount = 0;
 
+	int32 AssetsSinceGC = 0;
+	constexpr int32 GCInterval = 50;
+
 	for (const FAssetData& Asset : AllBlueprints)
 	{
 		// Filter: Only audit project content (starts with /Game/)
@@ -106,6 +109,12 @@ int32 UBlueprintAuditCommandlet::Main(const FString& Params)
 		{
 			++FailCount;
 			UE_LOG(LogCoRider, Warning, TEXT("CoRider: Failed to write audit for %s"), *BP->GetName());
+		}
+
+		if (++AssetsSinceGC >= GCInterval)
+		{
+			CollectGarbage(RF_NoFlags);
+			AssetsSinceGC = 0;
 		}
 	}
 
