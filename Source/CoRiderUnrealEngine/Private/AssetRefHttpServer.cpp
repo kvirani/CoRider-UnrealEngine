@@ -15,8 +15,8 @@
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
 
-static constexpr int32 PortRangeStart = 19877;
-static constexpr int32 PortRangeEnd = 19887;
+static constexpr int32 PortRangeStart = 19900;
+static constexpr int32 PortRangeEnd = 19910;
 
 static FString GetDependencyTypeString(UE::AssetRegistry::EDependencyProperty Properties)
 {

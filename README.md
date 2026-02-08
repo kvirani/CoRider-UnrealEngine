@@ -196,6 +196,7 @@ This plugin works with the companion [CoRider](https://github.com/kvirani/CoRide
 - **Windows-only** currently due to hardcoded paths (`Win64`, `UnrealEditor-Cmd.exe`).
 - **Editor-only module**: `Type: Editor` in the `.uplugin`, so it doesn't ship in packaged builds.
 - **Symlinks on Windows**: Prefer `New-Item -ItemType Junction` over `mklink /D` for directory symlinks. Junctions don't require admin or Developer Mode, and `mklink` is a `cmd.exe` built-in that doesn't work directly in PowerShell.
+- **Port binding**: `FAssetRefHttpServer::TryBind` uses UE's `FHttpServerModule` (raw TCP sockets). This does not detect ports already claimed by Windows HTTP.sys listeners (used by .NET `HttpListener`, e.g. the Rider plugin). Both servers can silently bind to the same port with requests routed unpredictably. The port range (19900-19910) is well separated from Rider's default (19876), but a proper fix would add a TCP probe (attempt a raw `FSocket` connect to `localhost:port`) before calling `GetHttpRouter`, to detect any listener regardless of binding mechanism.
 
 ## Module Dependencies
 
